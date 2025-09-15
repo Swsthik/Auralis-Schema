@@ -1,3 +1,9 @@
+
+"""
+retrieval.py
+Loads FAISS vector store and provides retrieval for RAG pipeline.
+"""
+
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
 import os
@@ -25,8 +31,15 @@ except Exception as e:
     db = None
     print(f"⚠️ Failed to load FAISS index from {VECTOR_STORE_PATH}: {e}")
 
-# --- Core Retrieval Function ---
 def retrieve_and_answer(query, k=3):
+    """
+    Retrieve top-k relevant docs for a query and build a draft answer.
+    Args:
+        query (str): User query
+        k (int): Number of docs to retrieve
+    Returns:
+        str: Draft answer with sources
+    """
     if db is None:
         return "⚠️ Vector database not available. Please check FAISS index path."
 
@@ -53,7 +66,7 @@ def retrieve_and_answer(query, k=3):
     )
     return answer
 
-
+# Example usage for testing
 if __name__ == "__main__":
     query = "What are the system requirements for installing the virtual machine?"
     answer = retrieve_and_answer(query, k=3)

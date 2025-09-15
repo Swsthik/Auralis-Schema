@@ -1,3 +1,10 @@
+# Classifies support tickets for topic, sentiment, and priority using LLM and local model.
+
+"""
+classifier_agent.py
+Classifies support tickets for topic, sentiment, and priority using LLM and local model.
+"""
+
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
 # Load local sentiment model (cardiffnlp/twitter-roberta-base-sentiment-latest)
@@ -6,6 +13,9 @@ sentiment_tokenizer = None
 sentiment_model = None
 
 def load_sentiment_model():
+    """
+    Load the local sentiment model and tokenizer if not already loaded.
+    """
     global sentiment_tokenizer, sentiment_model
     if sentiment_model is None:
         try:
@@ -32,6 +42,13 @@ SENTIMENT_RICH_MAP = {
 }
 
 def local_sentiment_analysis(text):
+    """
+    Analyze sentiment using local model and heuristics for richer tags.
+    Args:
+        text (str): Input text
+    Returns:
+        str: Sentiment label
+    """
     load_sentiment_model()
     if not sentiment_model or not sentiment_tokenizer:
         return "Neutral"
@@ -89,6 +106,13 @@ prompt = PromptTemplate(
 )
 
 def classify_ticket(ticket_text: str) -> dict:
+    """
+    Classify a support ticket for topic, priority (LLM) and sentiment (local model).
+    Args:
+        ticket_text (str): Ticket text
+    Returns:
+        dict: Classification with topic, priority, sentiment
+    """
     # Use LLM for topic and priority only
     formatted = prompt.format(ticket_text=ticket_text)
     response = llm.invoke(formatted)

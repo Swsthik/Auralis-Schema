@@ -1,0 +1,12 @@
+# Ignore files for Docker build
+venv/
+env/
+__pycache__/
+*.pyc
+.pytest_cache/
+.env
+.git/
+.gitignore
+*.log
+.DS_Store
+*.tmp

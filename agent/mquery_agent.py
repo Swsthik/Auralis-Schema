@@ -1,3 +1,13 @@
+
+"""
+MultiQueryAgent module: Orchestrates conversation, RAG, and ticketing for Customer Support Copilot.
+Handles:
+- Conversation history and context
+- RAG (Retrieval-Augmented Generation) decision and invocation
+- Ticket creation and escalation logic
+- Structured logging for dashboard
+"""
+
 import os
 from typing import List, Dict
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -5,40 +15,60 @@ from agent import ticket_agent
 from agent import rag_agent  # Full RAGAgent
 from dotenv import load_dotenv
 
+
 # --- Load environment and initialize LLM ---
 load_dotenv()
 api_key = os.getenv("GOOGLE_API_KEY")
 if not api_key:
     raise ValueError("GOOGLE_API_KEY not set in .env")
 
+# Initialize Google Gemini LLM for chat
 llm = ChatGoogleGenerativeAI(
     model="gemini-2.5-flash",
     api_key=api_key,
     temperature=0.3
 )
 
-# Initialize a single RAGAgent instance
+# Initialize a single RAGAgent instance for all queries
 _rag_agent_instance = rag_agent.RAGAgent()
 
 
+
 class MultiQueryAgent:
+    """
+    Orchestrates multi-turn conversation, RAG invocation, and ticketing.
+    Maintains conversation history and produces structured logs for UI.
+    """
     def __init__(self):
-        self.history: List[Dict[str, str]] = []
-        self.last_log: Dict = {}
+        self.history: List[Dict[str, str]] = []  # Conversation history
+        self.last_log: Dict = {}  # Last structured log for dashboard
 
     def add_to_history(self, role: str, content: str):
+        """
+        Add a message to the conversation history.
+        Args:
+            role (str): 'user' or 'assistant'
+            content (str): Message content
+        """
         self.history.append({"role": role, "content": content})
 
     def generate_response(self, user_input: str) -> str:
+        """
+        Generate a response to user input, possibly using RAG and ticketing.
+        Args:
+            user_input (str): User's message
+        Returns:
+            str: Assistant's response
+        """
         self.add_to_history("user", user_input)
 
-        # Build last 6 messages for context
+        # Build last 6 messages for context window
         context_text = ""
         for msg in self.history[-6:]:
             role = "User" if msg["role"] == "user" else "Assistant"
             context_text += f"{role}: {msg['content']}\n"
 
-        # --- Greeting / casual reply ---
+        # --- Greeting / casual reply shortcut ---
         greetings = ["hi", "hello", "hey", "good morning", "good evening"]
         if len(self.history) == 1 and user_input.lower().strip() in greetings:
             answer = f"{user_input.capitalize()}! How can I help you today?"
@@ -58,7 +88,7 @@ class MultiQueryAgent:
             print("\nLog:", log)
             return answer
 
-        # --- Decide if RAG is needed ---
+        # --- Decide if RAG is needed for this query ---
         decision_prompt = f"""
         You are a Customer Support Copilot. Given the following conversation, decide whether the user query requires knowledge from documentation or developer resources.
         Respond with either "RAG" or "NO_RAG".
@@ -70,6 +100,7 @@ class MultiQueryAgent:
         """
         decision_resp = llm.invoke(decision_prompt).content.strip().upper()
 
+        # Initialize log fields
         factors = {}
         reasoning = []
         should_escalate = False
@@ -77,7 +108,7 @@ class MultiQueryAgent:
         sources = []
 
         if "RAG" in decision_resp:
-            # Call full RAGAgent
+            # Call full RAGAgent for retrieval, classification, escalation
             rag_result = _rag_agent_instance.process_query(user_input)
 
             # Escalation based on RAG factors
@@ -89,6 +120,7 @@ class MultiQueryAgent:
                 should_escalate = True
                 reasoning.append("Critical topic")
 
+            # Create ticket for escalated/important queries
             ticket_id = ticket_agent.create_ticket(
                 query=user_input,
                 classification=rag_result.get("classification", {}),
@@ -122,7 +154,7 @@ class MultiQueryAgent:
             log_type = "ai_escalation" if should_escalate else "ai_response"
 
         else:
-            # Normal fallback
+            # Normal fallback: just continue the conversation
             fallback_prompt = f"""
             You are a helpful AI assistant. Continue the conversation with the user based on the following context:
             {context_text}
@@ -149,7 +181,7 @@ class MultiQueryAgent:
 
         factors["response_quality"] = response_quality
 
-        # Build structured log
+        # Build structured log for dashboard
         log = {
             "Type": log_type,
             "Content": answer,
@@ -166,25 +198,32 @@ class MultiQueryAgent:
         self.last_log = log
         print("\nLog:", log)
 
-        # Append sources to answer for UI
+        # Append sources to answer for UI if present
         if sources:
             answer += "\n\nSources:\n" + "\n".join(f"- {s}" for s in sources)
 
         return answer
 
 
+
 # ---- Wrapper for app.py ----
 _agent_instance = MultiQueryAgent()
 
-
 def handle_message(user_query, return_log=False):
+    """
+    Main entry point for app.py to get agent response and log.
+    Args:
+        user_query (str): User's message
+        return_log (bool): Whether to return structured log
+    Returns:
+        str or (str, dict): Response, and optionally log
+    """
     response = _agent_instance.generate_response(user_query)
     if return_log:
         return response, getattr(_agent_instance, "last_log", None)
     return response
 
-
-# Example standalone usage
+# Example standalone usage for testing
 if __name__ == "__main__":
     agent = MultiQueryAgent()
     print(agent.generate_response("hi"))

@@ -1,0 +1,12 @@
+runtime: python310
+
+env_variables:
+  # GOOGLE_API_KEY and OPENAI_API_KEY should be set via deployment environment, not in source control
+  # GOOGLE_API_KEY: "YOUR_GOOGLE_API_KEY"
+  # OPENAI_API_KEY: "YOUR_OPENAI_API_KEY"
+  RAG_MAX_DOCS: "5"
+  ESCALATION_THRESHOLD: "0.6"
+
+automatic_scaling:
+  min_instances: 0
+  max_instances: 10

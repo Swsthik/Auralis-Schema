@@ -1,4 +1,9 @@
-# rag_agent.py
+
+"""
+rag_agent.py
+Implements RAGAgent for classification, retrieval, and escalation logic in Customer Support Copilot.
+"""
+
 import os
 from typing import Dict
 from dotenv import load_dotenv
@@ -8,15 +13,26 @@ from rag import retrieval
 load_dotenv()
 
 
+
 class EscalationDecisionEngine:
+    """
+    Scores a query for escalation based on complexity, sentiment, topic, and response quality.
+    """
     def __init__(self, escalation_threshold: float = None):
         if escalation_threshold is None:
             escalation_threshold = float(os.getenv("ESCALATION_THRESHOLD", 0.6))
         self.escalation_threshold = escalation_threshold
 
     def score(self, query: str, classification: Dict, draft_answer: str = None) -> Dict:
-        """Return escalation decision + reasoning (no text response)."""
-
+        """
+        Return escalation decision and reasoning (no text response).
+        Args:
+            query (str): User query
+            classification (dict): Ticket classification
+            draft_answer (str): Draft answer from retrieval
+        Returns:
+            dict: Escalation decision, score, factors, and reasoning
+        """
         # --- Query complexity ---
         complexity = 0.0
         if "?" in query:
@@ -51,7 +67,7 @@ class EscalationDecisionEngine:
         }
         topic_criticality = critical_topics.get(topic, 0.2)
 
-        # --- Response quality ---
+        # --- Response quality (placeholder, updated later) ---
         response_quality = 0.0
 
         # --- Weighted score ---
@@ -88,20 +104,29 @@ class EscalationDecisionEngine:
         }
 
 
+
 class RAGAgent:
+    """
+    Combines classification, retrieval, and escalation for a user query.
+    Used by MultiQueryAgent for RAG-based support.
+    """
     def __init__(self, escalation_threshold: float = None):
         self.escalation_engine = EscalationDecisionEngine(escalation_threshold)
 
     def process_query(self, query: str) -> Dict:
         """
-        Classify, retrieve draft, and score escalation.
+        Classify, retrieve draft, and score escalation for a query.
         Does NOT produce final LLM response.
+        Args:
+            query (str): User query
+        Returns:
+            dict: classification, draft_answer, escalation
         """
         # --- Classify query ---
         classification = classify_ticket(query)
 
-        # --- Retrieval ---
-        draft_answer = retrieval.retrieve_and_answer(query, k=3)  # Removed 'return_sources'
+        # --- Retrieve relevant docs and draft answer ---
+        draft_answer = retrieval.retrieve_and_answer(query, k=3)
 
         # --- Escalation decision ---
         decision = self.escalation_engine.score(query, classification, draft_answer)
@@ -113,7 +138,8 @@ class RAGAgent:
         }
 
 
-# Example usage
+
+# Example usage for testing
 if __name__ == "__main__":
     agent = RAGAgent()
     test_queries = [
@@ -127,4 +153,4 @@ if __name__ == "__main__":
         print("Draft Answer:", result["draft_answer"])
         print("Classification:", result["classification"])
         print("Escalation:", result["escalation"])
-    
+
