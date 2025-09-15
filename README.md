@@ -1,3 +1,14 @@
+---
+title: Customer Support Copilot
+emoji: 🛠️
+colorFrom: blue
+colorTo: purple
+sdk: streamlit
+sdk_version: 1.28.1
+app_file: app.py
+pinned: false
+---
+
 # Customer Support Copilot
 
 A Streamlit-based app for customer support ticket classification and retrieval-augmented generation (RAG).
