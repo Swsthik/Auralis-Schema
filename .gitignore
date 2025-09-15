@@ -120,11 +120,6 @@ venv.bak/
 # mkdocs documentation
 /site
 
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
 # Pyre type checker
 .pyre/
 
@@ -136,27 +131,16 @@ dmypy.json
 .DS_Store
 Thumbs.db
 
-# Logs
-*.log
+
 
 # Temporary files
 *.tmp
 *.swp
 *.swo
 
-# Database
-*.db
-*.sqlite
-*.sqlite3
 
 # API keys and secrets
 .env.local
 .env.*.local
 
-# Vector stores and models
-rag/rag/vector_store/
-*.pkl
-*.faiss
 
-# Scraped data
-data/scraped_content*

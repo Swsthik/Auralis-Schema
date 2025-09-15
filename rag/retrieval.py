@@ -11,7 +11,7 @@ VECTOR_STORE_PATH = "rag/rag/vector_store/faiss_index"
 
 # Embeddings model (smaller for reduced size)
 embedding = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/paraphrase-MiniLM-L3-v2",  # Smaller model: ~23MB vs 90MB
+    model_name="sentence-transformers/all-MiniLM-L6-v2",
 )
 
 # --- Load FAISS index ONCE at startup ---
