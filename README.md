@@ -7,11 +7,24 @@ sdk: streamlit
 sdk_version: 1.28.1
 app_file: app.py
 pinned: false
+license: mit
 ---
 
 # Customer Support Copilot
 
 A Streamlit-based app for customer support ticket classification and retrieval-augmented generation (RAG).
+
+## Features
+- Chat interface for customer queries
+- Ticket classification and escalation
+- RAG-powered knowledge retrieval
+- Dashboard for ticket management
+
+## Setup
+1. Set environment variables:
+   - GOOGLE_API_KEY
+   - OPENAI_API_KEY
+2. Run: `streamlit run app.py`
 
 ## Structure
 - `app.py`: Main Streamlit app
