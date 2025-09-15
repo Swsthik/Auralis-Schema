@@ -11,3 +11,4 @@ langchain-community
 langchain-huggingface
 pypdf
 torch
+langchain_google_genai

@@ -1,174 +1,134 @@
-
-# Customer Support Copilot
-
-![Architecture Diagram](docs/architecture_diagram.png)
+# Customer Support Copilot -- Comprehensive README
 
 ## Overview
-Customer Support Copilot is an AI-powered Streamlit application designed to assist support teams by automating ticket classification, response generation, and escalation using Retrieval-Augmented Generation (RAG) and LLMs. It features a dashboard for ticket management, a conversational agent, and a robust backend pipeline for knowledge retrieval and ticket escalation.
 
----
+This project implements an AI-powered helpdesk assistant that
+classifies, retrieves, and responds to customer support tickets. It
+combines query routing, Retrieval-Augmented Generation (RAG), few-shot
+prompting, and multi-agent orchestration to provide real-time support
+and intelligent escalation.
 
-## Table of Contents
-- [Features](#features)
-- [Architecture](#architecture)
-- [System Flowcharts](#system-flowcharts)
-- [RAG Pipeline](#rag-pipeline)
-- [Directory Structure](#directory-structure)
-- [Setup & Installation](#setup--installation)
-- [Configuration](#configuration)
-- [Usage](#usage)
-- [Deployment](#deployment)
-- [Security](#security)
-- [Contributing](#contributing)
-- [License](#license)
+## Core Components & Workflow
 
----
+### User Interaction
 
-## Features
-- **Conversational AI**: Streamlit UI for real-time support conversations.
-- **Ticket Dashboard**: Visualizes ticket status, escalation, and sentiment.
-- **Automated Classification**: LLM and local models classify topic, sentiment, and priority.
-- **RAG Pipeline**: Retrieves relevant knowledge from vector store for accurate answers.
-- **Escalation Engine**: Scores and routes urgent/complex tickets.
-- **Extensible**: Modular agent and RAG design for easy customization.
+-   **Streamlit UI (app.py)**: Presents a Ticket Dashboard showing
+    Topic, Sentiment, Priority, Escalation status, and final AI
+    response.
+-   Interactive Agent: Chat-style interface to submit new tickets.
 
----
+### Classification & Sentiment
 
-## Architecture
+-   **Classifier Agent (classifier_agent.py)**: Uses Gemini-2.5-flash
+    for Topic & Priority classification.
+-   Local RoBERTa sentiment model and heuristics to refine tags like
+    Frustrated, Angry, Curious.
 
-```mermaid
-graph TD
-      A[User] -->|Query| B[Streamlit UI]
-      B -->|User Message| C[MultiQueryAgent]
-      C -->|Classify| D[Classifier Agent]
-      C -->|RAG Decision| E[RAG Agent]
-      E -->|Retrieve| F[FAISS Vector Store]
-      C -->|Escalation| G[Ticket Agent]
-      C -->|Response| B
-      G -->|Ticket Log| B
+### Retrieval-Augmented Generation (RAG)
+
+-   **Vector Store**: Built with vector_store.py from PDFs/TXT in
+    data/secure-agent. Uses FAISS with
+    sentence-transformers/all-MiniLM-L6-v2 embeddings.
+-   **RAG Agent (rag_agent.py)**: Calls classify_ticket, retrieves
+    relevant documents, and drafts an answer.
+-   EscalationDecisionEngine scores complexity, sentiment urgency, topic
+    criticality, and answer quality.
+
+### Multi-Agent Orchestration
+
+-   **MultiQueryAgent (mquery_agent.py)**: Maintains conversation
+    context and uses a decision prompt to route each query: RAG vs
+    NO_RAG.
+-   **Quality Agent (quality_agent.py)**: Evaluates final responses for
+    coverage and quality, can trigger escalation.
+-   **Ticket Agent (ticket_agent.py)**: Generates unique ticket IDs and
+    stores query, classification, response, and escalation info.
+
+## End-to-End Flow
+
+User → Streamlit UI → MultiQueryAgent → Decision: RAG needed?\
+Yes → RAGAgent → classify_ticket → FAISS retrieve_and_answer →
+EscalationDecisionEngine\
+No → Direct Gemini response → QualityAgent evaluation → TicketAgent
+stores ticket + escalation → Streamlit dashboard updates
+
+## Key Techniques
+
+-   **Query Routing**: LLM prompt decides RAG vs. direct answer.
+-   **Few-Shot Prompting**: Context window of last 6 messages for
+    coherent multi-turn responses.
+-   **RAG with FAISS**: Local vector DB for fast, citation-ready
+    retrieval.
+-   **4 Agents**: Classifier, RAG, MultiQuery/Quality, Ticket.
+-   **Comprehensive Prompting**: Carefully structured decision,
+    combined-answer, and fallback prompts.
+-   **Escalation Logic**: Weighted scoring on complexity, sentiment
+    urgency, topic criticality, and answer quality.
+
+## Setup & Run
+
+``` bash
+git clone <repo_url>
+cd customer-support-copilot
+pip install -r requirements.txt
+
+cp .env.example .env  # add GOOGLE_API_KEY and optional ESCALATION_THRESHOLD
+
+python agent/vector_store.py   # builds FAISS index
+streamlit run agent/app.py
 ```
-
-- **User** interacts with the Streamlit UI.
-- **MultiQueryAgent** orchestrates classification, retrieval, and escalation.
-- **Classifier Agent** uses LLM and local models for ticket classification.
-- **RAG Agent** retrieves knowledge from the FAISS vector store.
-- **Ticket Agent** manages ticket creation and escalation.
-
----
-
-## System Flowcharts
-
-### 1. Message Handling Flow
-
-```mermaid
-flowchart TD
-      U[User Input] --> S[Session State]
-      S --> MQ[MultiQueryAgent]
-      MQ -->|Classify| CL[Classifier Agent]
-      MQ -->|RAG Decision| RG[RAG Agent]
-      RG -->|Retrieve| VS[Vector Store]
-      MQ -->|Escalate| TK[Ticket Agent]
-      MQ -->|Log| L[Dashboard]
-      MQ -->|Response| S
-```
-
-### 2. RAG Pipeline
-
-```mermaid
-flowchart TD
-      Q[User Query] --> C[Classifier Agent]
-      Q --> R[RAG Agent]
-      R --> V[Vector Store]
-      V --> R
-      R --> E[Escalation Engine]
-      E --> T[Ticket Agent]
-      R --> O[Draft Answer]
-```
-
----
-
-## RAG Pipeline
-1. **Classification**: User query is classified for topic, sentiment, and priority.
-2. **Retrieval**: Top-k relevant documents are retrieved from the FAISS vector store.
-3. **Draft Answer**: Retrieved content is synthesized into a draft answer.
-4. **Escalation Decision**: Query is scored for escalation based on complexity, sentiment, and topic.
-5. **Ticket Creation**: If escalation is needed, a ticket is created and logged.
-6. **Final Response**: LLM generates a conversational response using all context.
-
----
-
-## Directory Structure
-```
-firstofficer_service/
-   customer-support-copilot/
-      app.py                # Streamlit UI and main logic
-      config.py             # API keys and config
-      requirements.txt      # Python dependencies
-      agent/
-         mquery_agent.py     # Orchestrator agent
-         classifier_agent.py # Ticket classification
-         rag_agent.py        # RAG pipeline
-         ticket_agent.py     # Ticket management
-      rag/
-         retrieval.py        # Vector store retrieval
-         vector_store.py     # Build/update vector store
-         data/               # Source docs for vector store
-      data/
-         sample_tickets.json # Example tickets
-      docs/
-         architecture_diagram.png
-```
-
----
-
-## Setup & Installation
-1. **Clone the repository**
-    ```bash
-    git clone https://github.com/Swsthik/Auralis-Schema.git
-    cd firstofficer_service/customer-support-copilot
-    ```
-2. **Install dependencies**
-    ```bash
-    pip install -r requirements.txt
-    ```
-3. **Prepare .env file**
-    - Add your `GOOGLE_API_KEY` and `OPENAI_API_KEY`.
-
----
-
-## Configuration
-- Edit `config.py` and `.env` for API keys and settings.
-- Place knowledge base files in `rag/data/secure-agent/` and run `rag/vector_store.py` to build the vector store.
-
----
-
-## Usage
-- Run the app locally:
-   ```bash
-   streamlit run app.py
-   ```
-- Interact with the UI, view ticket dashboard, and test the support copilot.
-
----
 
 ## Deployment
-- **Docker**: Use the provided `Dockerfile` for containerized deployment.
-- **Cloud Run**: Deploy to Google Cloud Run using the documented steps.
-- **Hugging Face Spaces**: Deploy for free with the included YAML metadata.
 
----
+Deploy easily to Streamlit Cloud, Vercel, or Railway. Ensure the FAISS
+index and .env are included.
 
-## Security
-- **API Keys**: Never commit secrets. Use `.env` and environment variables.
-- **Data**: Sensitive data is not stored or logged by default.
-- **Escalation**: Urgent/critical tickets are flagged and routed for human review.
+## Evaluation Tips
 
----
+-   Bulk classification: Load provided sample_tickets file and check
+    dashboard.
+-   RAG answers: Ask "How do I enable SSO with Okta?" to see docs-based
+    response with citations.
+-   Escalation: Try an angry or critical query like "Your billing system
+    double-charged me!".
 
-## Contributing
-Pull requests and issues are welcome! Please see `CONTRIBUTING.md` for guidelines.
+## Architecture Diagram
 
----
+             ┌─────────────┐
+             │  Streamlit  │
+             └─────┬───────┘
+                   │
+          ┌────────▼────────┐
+          │ MultiQueryAgent │
+          └─┬─────────────┬─┘
+            │             │
+       ┌────▼────┐   ┌────▼────┐
+       │ RAGAgent│   │ Gemini  │
+       └────┬────┘   └─────────┘
+            │
+     ┌──────▼───────┐
+     │ FAISS Vector │
+     └──────────────┘
 
-## License
-MIT License. See `LICENSE` file for details.
+## Key Files
+
+  -----------------------------------------------------------------------
+  File                           Purpose
+  ------------------------------ ----------------------------------------
+  app.py                         Streamlit UI
+
+  classifier_agent.py            Topic/Priority classification + local
+                                 sentiment
+
+  rag_agent.py                   Retrieval + escalation
+
+  mquery_agent.py                Conversation, query routing
+
+  quality_agent.py               Response evaluation
+
+  ticket_agent.py                Ticket creation/storage
+
+  retrieval.py                   FAISS retrieval helper
+
+  vector_store.py                Build/update vector DB
+  -----------------------------------------------------------------------
